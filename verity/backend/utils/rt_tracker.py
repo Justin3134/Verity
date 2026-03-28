@@ -130,7 +130,7 @@ class SessionTracker:
                                 "model_name": call.model_name,
                                 "model_provider": "DigitalOcean",
                                 "input": call.messages,
-                                "output": call.output,
+                                "output": {"role": "assistant", "content": call.output},
                                 "input_tokens": call.input_tokens,
                                 "output_tokens": call.output_tokens,
                             }],
