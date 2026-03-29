@@ -33,7 +33,7 @@ export default function HomePage() {
       const formData = new FormData();
       formData.append("query", q);
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8001";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
       const res = await fetch(`${backendUrl}/analyze`, {
         method: "POST",
         body: formData,

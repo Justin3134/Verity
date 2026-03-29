@@ -185,13 +185,17 @@ export default function AnalysisPage() {
   const [activePanel, setActivePanel] = useState<ActivePanel>("graph");
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8001";
+  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
 
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch(`${BACKEND}/status/${jobId}`);
       if (!res.ok) {
-        if (res.status === 404) { setError("Analysis not found."); return; }
+        if (res.status === 404) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setError("Analysis not found.");
+          return;
+        }
         throw new Error(`HTTP ${res.status}`);
       }
       const data: JobStatus = await res.json();
@@ -201,6 +205,7 @@ export default function AnalysisPage() {
         if (data.status === "complete") setActivePanel("debates");
       }
     } catch (err: unknown) {
+      if (pollRef.current) clearInterval(pollRef.current);
       setError(err instanceof Error ? err.message : String(err));
     }
   }, [jobId, BACKEND]);
