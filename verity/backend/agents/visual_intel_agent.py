@@ -230,6 +230,10 @@ Synthesize visual and market evidence into ground-truth intelligence."""
     result["visual_analyses"] = visual_analyses
 
     agent["observations"] = result.get("observations", [])
+    agent["sources"] = [
+        {"title": s.get("title", ""), "url": s.get("url", "")}
+        for s in imagery_sources if s.get("url")
+    ][:5]
     final_msg = f"Complete — {len(result.get('observations', []))} observations, {len(result.get('economic_signals', []))} economic signals"
     log(final_msg)
     agent["status"] = "complete"

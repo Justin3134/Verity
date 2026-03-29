@@ -261,6 +261,7 @@ Interpret these market signals as geopolitical intelligence indicators."""
 
     agent["findings"] = result.get("geopolitical_signals", [])
     agent["market_data"] = market_snapshot
+    agent["sources"] = result.get("news_sources", [])[:5]
     final_msg = f"Complete — Risk: {result.get('risk_level', 'unknown').upper()} | {len(result.get('geopolitical_signals', []))} signals detected"
     log(final_msg)
     agent["status"] = "complete"

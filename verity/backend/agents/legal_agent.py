@@ -291,6 +291,16 @@ Check UN Charter. Surface any active legal challenges or Congressional objection
     agent["actions"] = actions
     agent["cases"] = result.get("most_relevant_cases", [])
 
+    legal_source_list: list[dict] = []
+    for sources in legal_sources.values():
+        for s in sources:
+            if s.get("url"):
+                legal_source_list.append({"title": s.get("title", ""), "url": s["url"]})
+    for s in firecrawl_results:
+        if s.get("url"):
+            legal_source_list.append({"title": s.get("title", ""), "url": s["url"]})
+    agent["sources"] = legal_source_list[:5]
+
     final_msg = (
         f"Complete — Overall: {assessment} | "
         f"{len(actions)} actions analyzed | "

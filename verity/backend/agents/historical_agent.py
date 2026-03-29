@@ -227,5 +227,6 @@ Synthesize this into actionable historical intelligence. If Senso context is spa
     agent["status"] = "complete"
     agent["result"] = result.get("summary", "")
     agent["findings"] = result.get("precedents", [])
+    agent["sources"] = result.get("web_sources", [])[:5]
 
     return result

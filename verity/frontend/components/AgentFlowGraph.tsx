@@ -100,34 +100,30 @@ interface AgentSourceItem {
 function extractAgentSources(agents: JobStatus["agents"]): AgentSourceItem[] {
   const items: AgentSourceItem[] = [];
 
-  function add(agentKey: string, list: { title?: string; url?: string }[], max = 3) {
-    for (const item of list.slice(0, max)) {
+  function add(agentKey: string, list: { title?: string; url?: string }[]) {
+    for (const item of list.slice(0, 5)) {
       if (!item.url) continue;
       const domain = hostname(item.url);
       items.push({ id: `source_${agentKey}_${items.length}`, agentKey, title: item.title || domain, url: item.url, domain });
     }
   }
 
-  const bn = agents.breaking_news as unknown as Record<string, unknown>;
-  add("breaking_news", (bn.articles as { title?: string; url?: string }[]) ?? []);
+  const streamKeys = ["breaking_news", "historical", "official_docs", "visual_intel", "financial_market", "social_pulse", "legal"] as const;
+  const fieldMap: Record<string, string> = {
+    breaking_news: "articles",
+    historical: "sources",
+    official_docs: "documents",
+    visual_intel: "sources",
+    financial_market: "sources",
+    social_pulse: "posts",
+    legal: "sources",
+  };
 
-  const od = agents.official_docs as unknown as Record<string, unknown>;
-  add("official_docs", (od.documents as { title?: string; url?: string }[]) ?? []);
-
-  const sp = agents.social_pulse as unknown as Record<string, unknown>;
-  add("social_pulse", (sp.posts as { title?: string; url?: string }[]) ?? []);
-
-  const vi = agents.visual_intel as unknown as Record<string, unknown>;
-  const viObs = (vi.observations as { observation?: string; source_url?: string }[]) ?? [];
-  for (const o of viObs.slice(0, 3)) {
-    if (!o.source_url) continue;
-    const domain = hostname(o.source_url);
-    items.push({ id: `source_visual_intel_${items.length}`, agentKey: "visual_intel", title: o.observation?.slice(0, 50) || domain, url: o.source_url, domain });
+  for (const key of streamKeys) {
+    const agent = agents[key] as unknown as Record<string, unknown>;
+    const field = fieldMap[key];
+    add(key, (agent[field] as { title?: string; url?: string }[]) ?? []);
   }
-
-  const leg = agents.legal as unknown as Record<string, unknown>;
-  const legActions = (leg.actions as { action?: string; url?: string }[]) ?? [];
-  add("legal", legActions.map((a) => ({ title: a.action, url: a.url })));
 
   return items;
 }
