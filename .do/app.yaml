@@ -29,6 +29,9 @@ services:
       - key: NEXLA_API_URL
         value: https://dataops-sync.nexla.io/sync-e298e8/408016
         scope: RUN_TIME
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        type: SECRET
 
   - name: frontend
     source_dir: verity/frontend

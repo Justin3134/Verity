@@ -12,6 +12,7 @@ import sys
 import uuid
 from typing import Optional
 
+import asyncpg
 from dotenv import load_dotenv
 
 # Load .env from the verity root
@@ -28,6 +29,14 @@ from agents.flow import run_analysis_flow
 
 app = FastAPI(title="VERITY Intelligence API", version="1.0.0")
 
+# Database pool — None when DATABASE_URL is not set (falls back to in-memory)
+db_pool: asyncpg.Pool | None = None
+
+
+@app.on_event("startup")
+async def startup():
+    await init_db()
+
 _default_origins = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"]
 _extra_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
 _allowed_origins = _default_origins + _extra_origins
@@ -40,11 +49,82 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory job store
+# In-memory job store (always used for live streaming; DB is for persistence)
 jobs: dict[str, dict] = {}
 
-# Recent analyses for the landing page
+# Recent analyses fallback when DB is unavailable
 recent_analyses: list[dict] = []
+
+
+async def init_db() -> None:
+    """Create tables if they don't exist."""
+    global db_pool
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        return
+    try:
+        db_pool = await asyncpg.create_pool(database_url, min_size=1, max_size=5)
+        async with db_pool.acquire() as conn:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS analyses (
+                    job_id      TEXT PRIMARY KEY,
+                    query       TEXT NOT NULL,
+                    status      TEXT NOT NULL DEFAULT 'starting',
+                    results     JSONB,
+                    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS analyses_created_at_idx
+                ON analyses (created_at DESC)
+            """)
+    except Exception as exc:
+        print(f"[DB] Could not connect to database: {exc}. Running in-memory only.")
+        db_pool = None
+
+
+async def db_upsert_job(job: dict) -> None:
+    if db_pool is None:
+        return
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO analyses (job_id, query, status, results, updated_at)
+                VALUES ($1, $2, $3, $4, NOW())
+                ON CONFLICT (job_id) DO UPDATE
+                SET status = EXCLUDED.status,
+                    results = EXCLUDED.results,
+                    updated_at = NOW()
+            """, job["job_id"], job["query"], job["status"],
+                json.dumps(job.get("results")))
+    except Exception as exc:
+        print(f"[DB] upsert failed: {exc}")
+
+
+async def db_get_recent(limit: int = 8) -> list[dict]:
+    if db_pool is None:
+        return recent_analyses[:limit]
+    try:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT job_id, query, status, created_at
+                FROM analyses
+                ORDER BY created_at DESC
+                LIMIT $1
+            """, limit)
+            return [
+                {
+                    "job_id": r["job_id"],
+                    "query": r["query"],
+                    "status": r["status"],
+                    "timestamp": r["created_at"].timestamp(),
+                }
+                for r in rows
+            ]
+    except Exception as exc:
+        print(f"[DB] fetch recent failed: {exc}")
+        return recent_analyses[:limit]
 
 
 def create_job(job_id: str, query: str) -> dict:
@@ -149,11 +229,12 @@ async def run_flow_background(job_id: str, query: str, url: Optional[str], image
     except Exception as e:
         jobs[job_id]["status"] = "error"
         jobs[job_id]["error"] = str(e)
-        # Mark all running agents as errored
         for agent in jobs[job_id]["agents"].values():
             if agent["status"] == "running":
                 agent["status"] = "error"
                 agent["action"] = f"Error: {str(e)[:80]}"
+    finally:
+        await db_upsert_job(jobs[job_id])
 
 
 @app.post("/analyze")
@@ -179,13 +260,14 @@ async def analyze(
         raw = await image.read()
         image_data = base64.b64encode(raw).decode()
 
-    # Track recent analyses
+    # Track recent analyses in memory (DB persistence happens on completion)
     recent_analyses.insert(
         0,
         {"job_id": job_id, "query": query, "timestamp": __import__("time").time()},
     )
     if len(recent_analyses) > 10:
         recent_analyses.pop()
+    await db_upsert_job(jobs[job_id])
 
     # Run analysis in background
     background_tasks.add_task(run_flow_background, job_id, query, url, image_data)
@@ -204,7 +286,7 @@ async def get_status(job_id: str):
 @app.get("/recent")
 async def get_recent():
     """Returns recent analyses for the landing page."""
-    return {"recent": recent_analyses[:8]}
+    return {"recent": await db_get_recent(8)}
 
 
 class ChatRequest(BaseModel):
