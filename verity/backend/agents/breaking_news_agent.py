@@ -61,7 +61,7 @@ async def _fetch_tavily_articles(query: str) -> list[dict]:
         client = _get_tavily()
         response = await client.search(
             f"latest breaking news {query}",
-            max_results=10,
+            max_results=5,
             search_depth="basic",
             topic="news",
         )
@@ -115,7 +115,7 @@ async def run_breaking_news_agent(job_status: dict, query: str) -> dict:
 
     # Build article digest for the LLM
     digest_parts = []
-    for i, a in enumerate(articles[:10]):
+    for i, a in enumerate(articles[:5]):
         title = a.get("title") or ""
         desc = a.get("description") or ""
         content = (a.get("content") or "")[:300]
@@ -177,7 +177,7 @@ Extract all factual claims. Flag single-source reports. Detect coordinated langu
             "url": a.get("url", ""),
             "image": a.get("image") or None,
         }
-        for a in articles[:8]
+        for a in articles[:5]
     ]
     result["source"] = source_label
     result["article_count"] = len(articles)

@@ -13,9 +13,38 @@ import subprocess
 import sys
 
 import httpx
+from tavily import AsyncTavilyClient
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.do_llm import TEXT_MODEL, do_chat
+
+
+def _get_tavily() -> AsyncTavilyClient:
+    return AsyncTavilyClient(api_key=os.environ.get("TAVILY_API_KEY", ""))
+
+
+async def _fetch_tavily_financial(query: str) -> list[dict]:
+    """Fetch 5 live financial/economic news sources related to the query."""
+    try:
+        client = _get_tavily()
+        response = await client.search(
+            f"financial economic market impact {query}",
+            max_results=5,
+            search_depth="basic",
+            topic="news",
+        )
+        results = []
+        for r in response.get("results", []):
+            url = r.get("url", "")
+            results.append({
+                "title": r.get("title", ""),
+                "content": (r.get("content") or "")[:300],
+                "url": url,
+                "source": url.split("/")[2] if url.startswith("http") else "Web",
+            })
+        return results
+    except Exception:
+        return []
 
 
 def _run_senso_sync(args: list[str]) -> dict | list | None:
@@ -108,14 +137,16 @@ async def run_financial_market_agent(job_status: dict, query: str) -> dict:
         agent.setdefault("logs", []).append(msg)
         job_status.setdefault("senso_log", []).append(f"Financial Agent: {msg}")
 
-    log("Connecting to CoinGecko and Yahoo Finance APIs...")
+    log("Connecting to CoinGecko, Yahoo Finance, and Tavily financial news...")
 
-    # Fetch all market data in parallel
-    crypto_data, vix_data, oil_data = await asyncio.gather(
+    # Fetch all market data and news in parallel
+    crypto_data, vix_data, oil_data, news_sources = await asyncio.gather(
         _fetch_crypto_prices(),
         _fetch_yahoo_chart("%5EVIX"),
         _fetch_yahoo_chart("CL%3DF"),
+        _fetch_tavily_financial(query),
     )
+    log(f"Tavily: {len(news_sources)} financial news sources retrieved.")
 
     # Build readable market snapshot
     market_snapshot: list[str] = []

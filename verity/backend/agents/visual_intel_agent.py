@@ -72,7 +72,7 @@ async def _find_imagery_urls(query: str) -> list[dict]:
             f"{query} satellite photo evidence military visual",
         ]
         for sq in searches:
-            response = await client.search(sq, max_results=5, search_depth="basic")
+            response = await client.search(sq, max_results=3, search_depth="basic")
             for r in response.get("results", []):
                 url = r.get("url", "")
                 if url and url not in seen_urls:
@@ -82,7 +82,7 @@ async def _find_imagery_urls(query: str) -> list[dict]:
                         "title": r.get("title", ""),
                         "description": r.get("content", ""),
                     })
-        return imagery[:6]
+        return imagery[:5]
     except Exception:
         return []
 
@@ -140,12 +140,12 @@ async def run_visual_intel_agent(job_status: dict, query: str) -> dict:
         client = _get_tavily()
         econ_response = await client.search(
             f"market reaction oil price economic signal {query}",
-            max_results=4,
+            max_results=5,
             search_depth="basic",
             topic="news",
         )
         econ_snippets = []
-        for r in econ_response.get("results", [])[:4]:
+        for r in econ_response.get("results", [])[:5]:
             title = r.get("title", "")
             content = r.get("content", "")
             econ_snippets.append(f"{title}: {content[:200]}")

@@ -12,8 +12,37 @@ import re
 import subprocess
 import sys
 
+from tavily import AsyncTavilyClient
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.do_llm import TEXT_MODEL, do_chat
+
+
+def _get_tavily() -> AsyncTavilyClient:
+    return AsyncTavilyClient(api_key=os.environ.get("TAVILY_API_KEY", ""))
+
+
+async def _fetch_tavily_historical(query: str) -> list[dict]:
+    """Fetch 5 web sources covering historical context for the query."""
+    try:
+        client = _get_tavily()
+        response = await client.search(
+            f"historical background context {query}",
+            max_results=5,
+            search_depth="basic",
+        )
+        results = []
+        for r in response.get("results", []):
+            url = r.get("url", "")
+            results.append({
+                "title": r.get("title", ""),
+                "content": (r.get("content") or "")[:400],
+                "url": url,
+                "source": url.split("/")[2] if url.startswith("http") else "Web",
+            })
+        return results
+    except Exception:
+        return []
 
 
 def _run_senso_sync(args: list[str]) -> dict | list | None:
@@ -81,6 +110,18 @@ async def run_historical_agent(job_status: dict, query: str) -> dict:
         job_status.setdefault("senso_log", []).append(f"Historical Agent: {msg}")
 
     historical_contexts = []
+
+    # Web search: 5 live sources for historical context
+    import asyncio as _asyncio
+    log("Tavily: fetching 5 web sources for historical context...")
+    web_sources = await _fetch_tavily_historical(query)
+    if web_sources:
+        web_digest = "\n".join([
+            f"  [{i+1}] {s['source']} — {s['title']}: {s['content'][:200]}"
+            for i, s in enumerate(web_sources)
+        ])
+        historical_contexts.append({"query": f"web search: {query}", "context": web_digest, "type": "web_sources"})
+        log(f"Tavily: {len(web_sources)} historical web sources retrieved.")
 
     # Query 1: Direct historical precedent
     log(f"Senso: searching historical precedents for '{query[:40]}...'")
@@ -176,6 +217,8 @@ Synthesize this into actionable historical intelligence. If Senso context is spa
     except Exception as e:
         result = {"summary": f"Analysis error: {e}", "precedents": []}
 
+    result["web_sources"] = [{"title": s["title"], "url": s["url"]} for s in web_sources]
+    result["web_source_count"] = len(web_sources)
     result["senso_queries"] = len(historical_contexts)
     result["contexts_found"] = len(historical_contexts)
 

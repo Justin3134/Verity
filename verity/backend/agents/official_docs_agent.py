@@ -77,7 +77,7 @@ async def _fetch_tavily_official(query: str) -> list[dict]:
                         "url": url,
                         "source": {"name": url.split("/")[2] if url.startswith("http") else "Official Source"},
                     })
-        return docs[:8]
+        return docs[:5]
     except Exception:
         return []
 
@@ -104,7 +104,7 @@ async def run_official_docs_agent(job_status: dict, query: str) -> dict:
 
     # Build document digest
     digest_parts = []
-    for i, doc in enumerate(official_docs[:8]):
+    for i, doc in enumerate(official_docs[:5]):
         title = doc.get("title") or ""
         desc = doc.get("description") or doc.get("content") or ""
         url = doc.get("url") or ""
@@ -165,7 +165,7 @@ Extract official positions. Find what officials are NOT saying. Flag contradicti
     result["docs_found"] = len(official_docs)
     result["documents"] = [
         {"title": d.get("title", ""), "url": d.get("url", "")}
-        for d in official_docs[:6]
+        for d in official_docs[:5]
     ]
 
     agent["findings"] = result.get("official_positions", [])
