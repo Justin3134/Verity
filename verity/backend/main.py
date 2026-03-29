@@ -278,9 +278,29 @@ async def analyze(
 @app.get("/status/{job_id}")
 async def get_status(job_id: str):
     """Returns current job status — poll every second from frontend."""
-    if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return jobs[job_id]
+    if job_id in jobs:
+        return jobs[job_id]
+    # Fallback: job may have been created on another container instance — check DB
+    if db_pool is not None:
+        try:
+            async with db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT job_id, query, status, results FROM analyses WHERE job_id = $1",
+                    job_id,
+                )
+                if row:
+                    return {
+                        "job_id": row["job_id"],
+                        "query": row["query"],
+                        "status": row["status"],
+                        "results": json.loads(row["results"]) if row["results"] else None,
+                        "agents": {},
+                        "senso_log": [],
+                        "error": None,
+                    }
+        except Exception as exc:
+            print(f"[DB] status lookup failed: {exc}")
+    raise HTTPException(status_code=404, detail="Job not found")
 
 
 @app.get("/recent")
