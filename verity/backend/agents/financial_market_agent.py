@@ -194,6 +194,10 @@ async def run_financial_market_agent(job_status: dict, query: str) -> dict:
         "\n\n".join([f"Pattern [{q}]:\n{t}" for q, t in senso_results.items()])
         or "No historical correlation data available."
     )
+    news_str = (
+        "\n".join([f"  [{i+1}] {s['source']} — {s['title']}: {s['content'][:200]}" for i, s in enumerate(news_sources)])
+        or "No financial news sources retrieved."
+    )
 
     system = """You are VERITY's financial markets intelligence analyst.
 Your role: interpret market signals as leading indicators of geopolitical events.
@@ -234,6 +238,9 @@ Output JSON only:
 LIVE MARKET SNAPSHOT:
 {market_str}
 
+LIVE FINANCIAL NEWS (5 sources):
+{news_str}
+
 HISTORICAL CORRELATION PATTERNS (Senso):
 {senso_str}
 
@@ -249,6 +256,8 @@ Interpret these market signals as geopolitical intelligence indicators."""
     result["raw_market_data"] = {"crypto": crypto_data, "vix": vix_data, "oil": oil_data}
     result["market_snapshot_text"] = market_snapshot
     result["senso_correlations"] = len(senso_results)
+    result["news_sources"] = [{"title": s["title"], "url": s["url"]} for s in news_sources]
+    result["news_source_count"] = len(news_sources)
 
     agent["findings"] = result.get("geopolitical_signals", [])
     agent["market_data"] = market_snapshot

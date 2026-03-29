@@ -28,9 +28,13 @@ from agents.flow import run_analysis_flow
 
 app = FastAPI(title="VERITY Intelligence API", version="1.0.0")
 
+_default_origins = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"]
+_extra_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+_allowed_origins = _default_origins + _extra_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -31,7 +31,7 @@ async def _fetch_social_results(query: str) -> list[dict]:
 
     async def search(q: str, depth: str = "basic") -> list[dict]:
         try:
-            resp = await client.search(q, max_results=6, search_depth=depth)
+            resp = await client.search(q, max_results=2, search_depth=depth)
             return resp.get("results", [])
         except Exception:
             return []
@@ -64,7 +64,7 @@ async def _fetch_social_results(query: str) -> list[dict]:
                     "platform": platform,
                     "source": {"name": domain},
                 })
-    return results[:20]
+    return results[:5]
 
 
 async def run_social_pulse_agent(job_status: dict, query: str) -> dict:
@@ -101,7 +101,7 @@ async def run_social_pulse_agent(job_status: dict, query: str) -> dict:
         }
 
     digest_parts = []
-    for i, p in enumerate(posts[:18]):
+    for i, p in enumerate(posts[:5]):
         digest_parts.append(
             f"[{i+1}] PLATFORM: {p['platform']}\n"
             f"URL: {p['url']}\n"
@@ -173,7 +173,7 @@ Flag early warning signals. Surface any evidence of censorship or information su
             "platform": p.get("platform", ""),
             "url": p.get("url", ""),
         }
-        for p in posts[:10]
+        for p in posts[:5]
     ]
     result["post_count"] = len(posts)
 

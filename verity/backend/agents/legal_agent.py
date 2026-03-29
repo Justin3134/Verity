@@ -68,7 +68,7 @@ async def _tavily_legal_search(query: str) -> list[dict]:
     """Search for legal sources via Tavily."""
     client = _get_tavily()
     try:
-        resp = await client.search(query, max_results=6, search_depth="basic")
+        resp = await client.search(query, max_results=1, search_depth="basic")
         results = []
         for r in resp.get("results", []):
             url = r.get("url", "")
@@ -90,16 +90,14 @@ async def _fetch_legal_sources(query: str) -> dict[str, list[dict]]:
     """
     searches = await asyncio.gather(
         _tavily_legal_search(f"site:congress.gov {query} authorization law"),
-        _tavily_legal_search(f"site:supreme.justia.com {query} ruling"),
-        _tavily_legal_search(f"site:oyez.org {query} Supreme Court"),
+        _tavily_legal_search(f"site:supreme.justia.com OR site:oyez.org {query} Supreme Court ruling"),
         _tavily_legal_search(f"War Powers Act IEEPA AUMF presidential authority {query}"),
         _tavily_legal_search(f"UN Charter international law {query}"),
         _tavily_legal_search(f"{query} constitutional legal challenge court ruling"),
     )
     labels = [
         "congress_gov",
-        "scotus_justia",
-        "scotus_oyez",
+        "scotus",
         "war_powers_ieepa",
         "international_law",
         "legal_challenges",
@@ -197,7 +195,7 @@ async def run_legal_agent(job_status: dict, query: str) -> dict:
         if not sources:
             return ""
         parts = [f"[{label}]"]
-        for s in sources[:4]:
+        for s in sources[:1]:
             parts.append(f"  • {s['title']}\n    {s['content'][:250]}\n    URL: {s['url']}")
         return "\n".join(parts)
 

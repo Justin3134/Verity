@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+:root {
+  /* Base — near-black & soft white for a calmer, editorial feel */
+  --bg-base: #0a0a0c;
+  --bg-card: #121214;
+  --bg-elevated: #161618;
+  --bg-card-hover: #1c1c1f;
+  --border: #2a2a2e;
+  --border-bright: #3f3f46;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+
+  /* Accent palette: blue, purple, yellow, red, green (+ white via text) */
+  --stream-blue: #3b82f6;
+  --stream-purple: #a855f7;
+  --stream-yellow: #eab308;
+  --stream-red: #ef4444;
+  --stream-green: #22c55e;
+
+  /* Aliases for older code / Tailwind utilities */
+  --accent-cyan: var(--stream-blue);
+  --accent-cyan-glow: rgba(59, 130, 246, 0.18);
+  --accent-green: var(--stream-green);
+  --accent-green-glow: rgba(34, 197, 94, 0.15);
+  --accent-amber: var(--stream-yellow);
+  --accent-amber-glow: rgba(234, 179, 8, 0.12);
+  --accent-red: var(--stream-red);
+  --accent-red-glow: rgba(239, 68, 68, 0.15);
+  --accent-purple: var(--stream-purple);
+  --accent-purple-glow: rgba(168, 85, 247, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-bright);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Agent status pulse */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.pulse-glow {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+/* Scanning animation for running agents */
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.scan-line {
+  animation: scan-line 2s linear infinite;
+}
+
+/* Fade in up */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards;
+}
+
+/* Typing cursor */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* Gradient border glow */
+.border-glow-cyan {
+  box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.3), inset 0 0 20px rgba(88, 166, 255, 0.05);
+}
+
+.border-glow-green {
+  box-shadow: 0 0 0 1px rgba(63, 185, 80, 0.4), inset 0 0 20px rgba(63, 185, 80, 0.05);
+}
+
+/* Mono font for terminal feel */
+.font-mono {
+  font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", "SF Mono", Consolas, monospace;
+}
+
+/* Grid scanlines overlay */
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+}
+
+/* Progress bar animation */
+@keyframes progress-fill {
+  from { width: 0%; }
+}
+
+.progress-animated {
+  animation: progress-fill 0.5s ease-out forwards;
+}
