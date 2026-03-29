@@ -338,6 +338,85 @@ function SourceNode({ data }: {
 }
 
 
+// ─── SourceGroupNode — all sources for one agent in a single compact card ─────
+function SourceGroupNode({ data }: {
+  data: { sources: AgentSourceItem[]; agentKey: string; accent: string; active: boolean }
+}) {
+  const { sources, accent, active } = data;
+  return (
+    <div style={{
+      background: "#0d1117",
+      border: `1px solid ${active ? accent + "30" : "#1e1e22"}`,
+      borderLeft: `2px solid ${active ? accent : "#2a2a2e"}`,
+      borderRadius: 8, width: 230,
+      fontFamily: "inherit", overflow: "hidden",
+      boxShadow: active ? `0 0 14px ${accent}14` : "none",
+      transition: "border-color 0.3s, box-shadow 0.3s",
+    }}>
+      <Handle type="target" position={Position.Top} style={HANDLE_SM} />
+      <div style={{
+        padding: "4px 8px 4px 10px",
+        borderBottom: `1px solid ${accent}14`,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        background: `linear-gradient(90deg, ${accent}08 0%, transparent 70%)`,
+      }}>
+        <span style={{ fontSize: 8, color: active ? accent : "#52525b", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+          Web Sources
+        </span>
+        {sources.length > 0 && (
+          <span style={{ fontSize: 8, color: "#484f58", fontFamily: "monospace" }}>{sources.length} found</span>
+        )}
+      </div>
+      {sources.length === 0 ? (
+        <div style={{ padding: "5px 10px" }}>
+          <span style={{ fontSize: 9, color: "#3f3f46", fontFamily: "monospace" }}>No sources yet</span>
+        </div>
+      ) : (
+        <div style={{ padding: "3px 5px 4px 5px", display: "flex", flexDirection: "column", gap: 1 }}>
+          {sources.map((src) => {
+            const fav = faviconUrl(src.url);
+            return (
+              <a
+                key={src.id}
+                href={src.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "3px 5px",
+                  borderRadius: 4,
+                  textDecoration: "none",
+                  background: "transparent",
+                  transition: "background 0.12s",
+                }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = `${accent}14`)}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = "transparent")}
+              >
+                {fav && (
+                  <img src={fav} alt="" width={10} height={10}
+                    style={{ borderRadius: 2, flexShrink: 0 }}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  />
+                )}
+                <span style={{
+                  fontSize: 9, color: active ? accent : "#4a4a52",
+                  fontFamily: "monospace", textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
+                }}>
+                  {src.domain}
+                </span>
+                <span style={{ fontSize: 8, color: "#484f58", flexShrink: 0 }}>↗</span>
+              </a>
+            );
+          })}
+        </div>
+      )}
+      <Handle type="source" position={Position.Bottom} style={HANDLE_SM} />
+    </div>
+  );
+}
+
 // ─── SynthesizerNode ──────────────────────────────────────────────────────────
 function SynthesizerNode({ data }: { data: { agent: AgentStatus; jobResults: AnalysisResults | null } }) {
   const { agent, jobResults } = data;
@@ -509,9 +588,22 @@ function SensoNode({ data }: { data: { senso: Record<string, unknown> | null | u
                   <span style={{ fontSize: 8, color: cfg.color, fontFamily: "monospace", fontWeight: 700, flexShrink: 0 }}>
                     {cfg.icon} {cfg.label}
                   </span>
-                  <span style={{ fontSize: 8, color: "#484f58", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: "auto" }}>
-                    {fc.source.length > 18 ? fc.source.slice(0, 18) + "…" : fc.source}
-                  </span>
+                  {fc.url ? (
+                    <a
+                      href={fc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: 8, color: "#6b7280", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: "auto", textDecoration: "none" }}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#a1a1aa")}
+                      onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#6b7280")}
+                    >
+                      {fc.source.length > 18 ? fc.source.slice(0, 18) + "…" : fc.source} ↗
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: 8, color: "#484f58", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: "auto" }}>
+                      {fc.source.length > 18 ? fc.source.slice(0, 18) + "…" : fc.source}
+                    </span>
+                  )}
                 </div>
                 {/* Claim text */}
                 <p style={{ fontSize: 9, color: isUnverified ? "#52525b" : "#a1a1aa", lineHeight: 1.35, margin: "0 0 2px 0" }}>
@@ -583,6 +675,7 @@ const nodeTypes: NodeTypes = {
   agent:       AgentNode       as unknown as NodeTypes[string],
   senso:       SensoNode       as unknown as NodeTypes[string],
   source:      SourceNode      as unknown as NodeTypes[string],
+  sourceGroup: SourceGroupNode as unknown as NodeTypes[string],
   synthesizer: SynthesizerNode as unknown as NodeTypes[string],
 };
 
@@ -596,10 +689,9 @@ const AGENT_COLS    = [0, 260, 520, 780, 1040, 1300, 1560];
 const QUERY_X       = 715;   // center 360px node: 895 − 180
 const SYNTH_X       = 715;
 const ROW_AGENTS    = 180;
-const ROW_SENSO     = 390;   // per-stream Senso fact-check boxes (one per agent)
-const ROW_SOURCES   = 640;   // individual source nodes
-const SOURCE_STEP   = 90;    // vertical gap between stacked source nodes
-const ROW_SYNTH     = 1180;
+const ROW_SOURCES   = 440;   // source group nodes (one compact box per agent)
+const ROW_SENSO     = 640;   // per-stream Senso fact-check boxes (one per agent)
+const ROW_SYNTH     = 1060;
 
 // ─── Build nodes ──────────────────────────────────────────────────────────────
 function buildNodes(
@@ -632,29 +724,29 @@ function buildNodes(
     })),
   ];
 
-  // Source nodes — extracted from each agent's articles/docs/posts
+  // Source group nodes — one compact box per agent column
   const allSources = extractAgentSources(agents);
-  // Group by agentKey to stack within the same column
   const sourcesByAgent: Record<string, AgentSourceItem[]> = {};
   for (const s of allSources) {
     if (!sourcesByAgent[s.agentKey]) sourcesByAgent[s.agentKey] = [];
     sourcesByAgent[s.agentKey].push(s);
   }
 
-  for (const [agentKey, sources] of Object.entries(sourcesByAgent)) {
-    const agentIdx = streamKeys.indexOf(agentKey as typeof streamKeys[number]);
-    if (agentIdx === -1) continue;
-    const colX = AGENT_COLS[agentIdx];
-
-    for (const [si, src] of sources.entries()) {
-      nodes.push({
-        id: src.id,
-        type: "source",
-        position: pos(src.id, { x: colX, y: ROW_SOURCES + si * SOURCE_STEP }),
-        data: { ...src, accent: ACCENT[agentKey] ?? "#71717a", inDebate: false },
-        draggable: true,
-      });
-    }
+  for (const [agentKeyStr, i] of streamKeys.map((k, i) => [k, i] as const)) {
+    const colX = AGENT_COLS[i];
+    const sources = sourcesByAgent[agentKeyStr] ?? [];
+    nodes.push({
+      id: `sources_${agentKeyStr}`,
+      type: "sourceGroup",
+      position: pos(`sources_${agentKeyStr}`, { x: colX, y: ROW_SOURCES }),
+      data: {
+        sources,
+        agentKey: agentKeyStr,
+        accent: ACCENT[agentKeyStr] ?? "#71717a",
+        active: agents[agentKeyStr as keyof typeof agents]?.status === "complete",
+      },
+      draggable: true,
+    });
   }
 
   // Synthesizer node
@@ -676,7 +768,6 @@ function buildEdges(
 ): Edge[] {
   const streamKeys = ["breaking_news", "historical", "official_docs", "visual_intel", "financial_market", "social_pulse", "legal"] as const;
   const synthActive = agents.synthesizer.status === "running" || agents.synthesizer.status === "complete";
-  const allSources  = extractAgentSources(agents);
 
   const isActive = (key: string) => {
     const a = agents[key as keyof typeof agents];
@@ -693,12 +784,24 @@ function buildEdges(
       data: { active: isActive(key), color: ACCENT[key] },
       markerEnd: { type: MarkerType.ArrowClosed, color: isActive(key) ? ACCENT[key] : "rgba(255,255,255,0.1)", width: 10, height: 10 },
     })),
-    // Agent → Senso fact-check box (one per stream)
+    // Agent → SourceGroup (one per stream)
+    ...streamKeys.map((key) => {
+      const agentDone = isActive(key);
+      return {
+        id: `${key}-sources_${key}`,
+        source: key,
+        target: `sources_${key}`,
+        type: "animated",
+        data: { active: agentDone, color: ACCENT[key] },
+        markerEnd: { type: MarkerType.ArrowClosed, color: agentDone ? ACCENT[key] : "rgba(255,255,255,0.1)", width: 8, height: 8 },
+      };
+    }),
+    // SourceGroup → Senso (sources feed into fact-check)
     ...streamKeys.map((key) => {
       const sensoActive = isActive(key);
       return {
-        id: `${key}-senso`,
-        source: key,
+        id: `sources_${key}-senso_${key}`,
+        source: `sources_${key}`,
         target: `senso_${key}`,
         type: "animated",
         data: { active: sensoActive, color: ACCENT[key] },
@@ -707,40 +810,7 @@ function buildEdges(
     }),
   ];
 
-  // Agent → its source nodes
-  const sourcesByAgent: Record<string, AgentSourceItem[]> = {};
-  for (const s of allSources) {
-    if (!sourcesByAgent[s.agentKey]) sourcesByAgent[s.agentKey] = [];
-    sourcesByAgent[s.agentKey].push(s);
-  }
-  for (const [agentKey, sources] of Object.entries(sourcesByAgent)) {
-    const agentDone = agents[agentKey as keyof typeof agents]?.status === "complete";
-    for (const src of sources) {
-      edges.push({
-        id: `${agentKey}-${src.id}`,
-        source: agentKey,
-        target: src.id,
-        type: "animated",
-        data: { active: agentDone, color: ACCENT[agentKey] ?? "#71717a" },
-        markerEnd: { type: MarkerType.ArrowClosed, color: agentDone ? (ACCENT[agentKey] ?? "#71717a") : "rgba(255,255,255,0.1)", width: 8, height: 8 },
-      });
-    }
-  }
-
-  // Source nodes → Synthesizer directly
-  for (const src of allSources) {
-    const agentDone = agents[src.agentKey as keyof typeof agents]?.status === "complete";
-    edges.push({
-      id: `${src.id}-synth`,
-      source: src.id,
-      target: "synthesizer",
-      type: "animated",
-      data: { active: agentDone && synthActive, color: ACCENT[src.agentKey] ?? "#71717a" },
-      markerEnd: { type: MarkerType.ArrowClosed, color: agentDone && synthActive ? (ACCENT[src.agentKey] ?? "#71717a") : "rgba(255,255,255,0.1)", width: 8, height: 8 },
-    });
-  }
-
-  // Senso box → Synthesizer (all 7 streams — replaces the old agent→synth direct path)
+  // Senso → Synthesizer (all 7 streams)
   for (const key of streamKeys) {
     const sensoStatus = (agents[key] as AgentStatus & { senso_stream?: { status?: string } }).senso_stream?.status;
     const sensoActive = (sensoStatus === "running" || sensoStatus === "complete") && synthActive;
