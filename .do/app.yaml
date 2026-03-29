@@ -1,0 +1,46 @@
+name: verity
+region: nyc
+services:
+  - name: backend
+    source_dir: verity/backend
+    dockerfile_path: verity/backend/Dockerfile
+    http_port: 8001
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    routes:
+      - path: /api
+        preserve_path_prefix: true
+    envs:
+      - key: ALLOWED_ORIGINS
+        value: ${frontend.PUBLIC_URL}
+        scope: RUN_TIME
+      - key: OPENAI_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: TAVILY_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: FIRECRAWL_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: DIGITALOCEAN_ACCESS_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: NEXLA_API_URL
+        value: https://dataops-sync.nexla.io/sync-e298e8/408016
+        scope: RUN_TIME
+
+  - name: frontend
+    source_dir: verity/frontend
+    dockerfile_path: verity/frontend/Dockerfile
+    http_port: 3000
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    routes:
+      - path: /
+    build_command: npm run build
+    run_command: node server.js
+    envs:
+      - key: NEXT_PUBLIC_BACKEND_URL
+        value: ${APP_URL}/api
+        scope: BUILD_TIME

@@ -323,6 +323,11 @@ async def validate_unkey(api_key: str) -> bool:
         return True  # Fail open for hackathon
 
 
+@app.get("/")
+async def root():
+    return {"service": "VERITY Intelligence API", "status": "ok", "docs": "/docs"}
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "VERITY Intelligence API"}
