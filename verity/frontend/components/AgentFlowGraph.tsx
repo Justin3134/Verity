@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import ReactFlow, {
   Background,
   Handle,
@@ -30,6 +30,7 @@ const ACCENT: Record<string, string> = {
   social_pulse:     "#ec4899",
   legal:            "#f59e0b",
   synthesizer:      "#ef4444",
+  forecast:         "#8b5cf6",
   query:            "#e4e4e7",
 };
 
@@ -60,7 +61,7 @@ const AGENT_META: Record<string, { icon: string; subtitle: string; itemLabel: st
   financial_market: { icon: "◐", subtitle: "CoinGecko · Yahoo Finance",      itemLabel: "Signals",   description: "Fetching live crypto, VIX, oil and correlating with geopolitics" },
   social_pulse:     { icon: "◉", subtitle: "Reddit · X · Social",            itemLabel: "Signals",   description: "Reading public reaction — what citizens on the ground actually know" },
   legal:            { icon: "⚖", subtitle: "Congress · SCOTUS · Intl Law",   itemLabel: "Actions",   description: "Checking constitutional authority, War Powers Act, and international law" },
-  synthesizer:      { icon: "✦", subtitle: "Fact Check · Cross-Reference",   itemLabel: "Findings",  description: "Cross-referencing all streams for final verdict" },
+  synthesizer:      { icon: "✦", subtitle: "Fact Check · Cross-Reference · Final Verdict", itemLabel: "Findings", description: "Cross-referencing all streams for the final verdict" },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -443,7 +444,7 @@ function SynthesizerNode({ data }: { data: { agent: AgentStatus; jobResults: Ana
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 13, color: accent }}>✦</span>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#f4f4f5", letterSpacing: "0.02em" }}>{agent.name}</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#f4f4f5", letterSpacing: "0.12em", textTransform: "uppercase" }}>THE TRUTH</span>
         </div>
         <StatusBadge status={agent.status} {...s} />
       </div>
@@ -451,6 +452,11 @@ function SynthesizerNode({ data }: { data: { agent: AgentStatus; jobResults: Ana
         <span style={{ fontSize: 9, color: "#4a4a52", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           Fact Check · Cross-Reference · Senso · Final Verdict
         </span>
+      </div>
+      <div style={{ padding: "3px 12px 0 12px" }}>
+        <div style={{ fontSize: 9, color: accent + "50", fontFamily: "monospace", letterSpacing: "0.06em" }}>
+          ✦ verity answer below
+        </div>
       </div>
       {(agent.status === "waiting" || agent.status === "idle") && (
         <div style={{ padding: "8px 12px 10px 12px" }}>
@@ -495,6 +501,7 @@ function SynthesizerNode({ data }: { data: { agent: AgentStatus; jobResults: Ana
       {isRunning && (
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${accent}, transparent)`, borderRadius: "0 0 12px 12px" }} className="scan-line" />
       )}
+      <Handle type="source" position={Position.Bottom} style={HANDLE_STYLE} />
     </div>
   );
 }
@@ -646,16 +653,305 @@ function SensoNode({ data }: { data: { senso: Record<string, unknown> | null | u
   );
 }
 
+// ─── ForecastNode — THE FUTURE ────────────────────────────────────────────────
+interface ForecastResult {
+  sub_query: string;
+  prediction: {
+    prediction: string;
+    confidence: "high" | "medium" | "low";
+    timeframe: string;
+    then_summary: string;
+    now_summary: string;
+    key_historical_source_index: number;
+    key_live_source_index: number;
+    divergence_warning: string | null;
+  };
+  historical_sources: { title: string; url: string; excerpt: string; date: string }[];
+  live_signals: { title: string; url: string; domain: string; excerpt: string; published: string }[];
+}
+
+function ForecastNode({ data }: { data: { jobId: string; backendUrl: string; synthesizerComplete: boolean; query: string } }) {
+  const [followUp, setFollowUp] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<ForecastResult | null>(null);
+  const [forecastError, setForecastError] = useState<string | null>(null);
+  const hasAutoRun = useState(false);
+  const accent = ACCENT.forecast;
+
+  const runForecast = async (q: string) => {
+    if (loading) return;
+    setLoading(true);
+    setForecastError(null);
+    setResult(null);
+    try {
+      const res = await fetch(`${data.backendUrl}/forecast`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: data.jobId, sub_query: q }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setResult(json);
+    } catch (e) {
+      setForecastError(e instanceof Error ? e.message : "Forecast failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Auto-fire when THE TRUTH completes
+  useEffect(() => {
+    if (data.synthesizerComplete && !hasAutoRun[0] && !loading && !result) {
+      hasAutoRun[1](true);
+      runForecast(data.query || "what will happen next");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.synthesizerComplete]);
+
+  const confColor = result ? ({ high: "#22c55e", medium: "#eab308", low: "#ef4444" } as Record<string, string>)[result.prediction.confidence] ?? "#71717a" : "#71717a";
+
+  return (
+    <div style={{
+      position: "relative",
+      background: "linear-gradient(160deg, #0e0a1e 0%, #08060f 100%)",
+      border: `1px solid ${accent}28`,
+      borderTop: `3px solid ${accent}`,
+      borderRadius: 12, width: 420,
+      boxShadow: result ? `0 0 40px ${accent}20` : "0 4px 24px rgba(0,0,0,0.5)",
+      fontFamily: "inherit", overflow: "hidden", transition: "box-shadow 0.4s",
+    }}>
+      <Handle type="target" position={Position.Top} style={HANDLE_STYLE} />
+
+      {/* Header */}
+      <div style={{
+        padding: "10px 14px 8px 14px", borderBottom: `1px solid ${accent}18`,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        background: `linear-gradient(90deg, ${accent}14 0%, transparent 70%)`,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 14, color: accent }}>◈</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#f4f4f5", letterSpacing: "0.14em", textTransform: "uppercase" }}>
+            THE FUTURE
+          </span>
+        </div>
+        <span style={{ fontSize: 8, color: `${accent}70`, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+          Senso KB · Tavily Live · Pattern Match
+        </span>
+      </div>
+
+      {/* Waiting for THE TRUTH */}
+      {!result && !loading && !data.synthesizerComplete && (
+        <div style={{ padding: "12px 14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <div style={{ width: 5, height: 5, borderRadius: "50%", background: `${accent}40`, flexShrink: 0 }} />
+            <span style={{ fontSize: 10, color: "#52525b", lineHeight: 1.5 }}>
+              Waiting for THE TRUTH to complete...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Error state */}
+      {!loading && !result && forecastError && (
+        <div style={{ padding: "10px 14px", fontSize: 9, color: "#ef4444", fontFamily: "monospace" }}>{forecastError}</div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div style={{ padding: "14px" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: accent, marginTop: 3, flexShrink: 0 }} className="pulse-glow" />
+            <div>
+              <div style={{ fontSize: 10, color: accent, fontFamily: "monospace", marginBottom: 4 }}>Querying Senso historical database...</div>
+              <div style={{ fontSize: 9, color: "#52525b", fontFamily: "monospace" }}>Fetching live signals from Tavily...</div>
+            </div>
+          </div>
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${accent}, transparent)`, borderRadius: "0 0 12px 12px" }} className="scan-line" />
+        </div>
+      )}
+
+      {/* Results */}
+      {result && (
+        <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* THEN vs NOW — two columns */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+
+            {/* THEN — Senso historical sources */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
+                <div style={{ width: 2, height: 10, background: "#a855f7", borderRadius: 1 }} />
+                <span style={{ fontSize: 8, color: "#a855f7", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>THEN</span>
+                <span style={{ fontSize: 7, color: "#52525b", fontFamily: "monospace" }}>Senso KB</span>
+              </div>
+              {result.prediction.then_summary && (
+                <p style={{ fontSize: 9, color: "#a855f780", lineHeight: 1.4, margin: "0 0 5px 0", fontStyle: "italic" }}>
+                  {result.prediction.then_summary}
+                </p>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                {result.historical_sources.slice(0, 3).map((s: { title: string; url: string; excerpt: string; date: string }, i: number) => {
+                  const isKey = (result.prediction.key_historical_source_index ?? 1) === i + 1;
+                  return (
+                    <div key={i} style={{
+                      background: isKey ? "rgba(168,85,247,0.10)" : "rgba(168,85,247,0.04)",
+                      border: `1px solid ${isKey ? "rgba(168,85,247,0.35)" : "rgba(168,85,247,0.12)"}`,
+                      borderRadius: 4, padding: "5px 6px",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 2 }}>
+                        {isKey && <span style={{ fontSize: 7, color: "#a855f7", flexShrink: 0 }}>★</span>}
+                        <span style={{ fontSize: 8, color: isKey ? "#c084fc" : "#7e22ce", fontFamily: "monospace", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {s.title || "Senso KB"}
+                        </span>
+                        {s.url ? (
+                          <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 8, color: "#6b7280", textDecoration: "none", flexShrink: 0 }}
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#a855f7")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#6b7280")}
+                          >↗</a>
+                        ) : null}
+                      </div>
+                      {s.date && <div style={{ fontSize: 7, color: "#52525b", fontFamily: "monospace", marginBottom: 2 }}>{s.date}</div>}
+                      <p style={{ fontSize: 8.5, color: "#a1a1aa", lineHeight: 1.4, margin: 0,
+                        display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        {s.excerpt}
+                      </p>
+                    </div>
+                  );
+                })}
+                {result.historical_sources.length === 0 && (
+                  <div style={{ fontSize: 8, color: "#3f3f46", fontFamily: "monospace", fontStyle: "italic" }}>No Senso records found</div>
+                )}
+              </div>
+            </div>
+
+            {/* NOW — Tavily live news */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
+                <div style={{ width: 2, height: 10, background: "#3b82f6", borderRadius: 1 }} />
+                <span style={{ fontSize: 8, color: "#3b82f6", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>NOW</span>
+                <span style={{ fontSize: 7, color: "#52525b", fontFamily: "monospace" }}>Tavily Live</span>
+              </div>
+              {result.prediction.now_summary && (
+                <p style={{ fontSize: 9, color: "#3b82f680", lineHeight: 1.4, margin: "0 0 5px 0", fontStyle: "italic" }}>
+                  {result.prediction.now_summary}
+                </p>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                {result.live_signals.slice(0, 3).map((s: { title: string; url: string; domain: string; excerpt: string; published: string }, i: number) => {
+                  const fav = faviconUrl(s.url);
+                  const isKey = (result.prediction.key_live_source_index ?? 1) === i + 1;
+                  return (
+                    <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" style={{
+                      display: "block", textDecoration: "none",
+                      background: isKey ? "rgba(59,130,246,0.10)" : "rgba(59,130,246,0.04)",
+                      border: `1px solid ${isKey ? "rgba(59,130,246,0.35)" : "rgba(59,130,246,0.12)"}`,
+                      borderRadius: 4, padding: "5px 6px", transition: "background 0.12s",
+                    }}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = "rgba(59,130,246,0.14)")}
+                      onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = isKey ? "rgba(59,130,246,0.10)" : "rgba(59,130,246,0.04)")}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 2 }}>
+                        {isKey && <span style={{ fontSize: 7, color: "#3b82f6", flexShrink: 0 }}>★</span>}
+                        {fav && <img src={fav} alt="" width={9} height={9} style={{ borderRadius: 1, flexShrink: 0 }}
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />}
+                        <span style={{ fontSize: 7, color: isKey ? "#93c5fd" : "#3b82f6", fontFamily: "monospace", textTransform: "uppercase", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {s.domain}
+                        </span>
+                        <span style={{ fontSize: 7, color: "#484f58", flexShrink: 0 }}>↗</span>
+                      </div>
+                      {s.published && <div style={{ fontSize: 7, color: "#52525b", fontFamily: "monospace", marginBottom: 2 }}>{s.published}</div>}
+                      <p style={{ fontSize: 8.5, color: "#93c5fd", lineHeight: 1.35, margin: 0,
+                        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        {s.title}
+                      </p>
+                      <p style={{ fontSize: 8, color: "#52525b", lineHeight: 1.35, margin: "2px 0 0 0",
+                        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        {s.excerpt}
+                      </p>
+                    </a>
+                  );
+                })}
+                {result.live_signals.length === 0 && (
+                  <div style={{ fontSize: 8, color: "#3f3f46", fontFamily: "monospace", fontStyle: "italic" }}>No live news found</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${accent}30, transparent)` }} />
+
+          {/* Prediction */}
+          <div style={{ borderLeft: `2px solid ${accent}`, padding: "8px 10px", background: `${accent}08`, borderRadius: "0 6px 6px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "monospace" }}>
+                ◈ Prediction
+              </span>
+              <span style={{
+                fontSize: 8, color: confColor,
+                background: `${confColor}14`, border: `1px solid ${confColor}30`,
+                borderRadius: 3, padding: "1px 5px", fontFamily: "monospace",
+                textTransform: "uppercase", letterSpacing: "0.06em",
+              }}>
+                {result.prediction.confidence} confidence
+              </span>
+              {result.prediction.timeframe && result.prediction.timeframe !== "unknown" && (
+                <span style={{ fontSize: 8, color: "#71717a", fontFamily: "monospace" }}>· {result.prediction.timeframe}</span>
+              )}
+            </div>
+            <p style={{ fontSize: 11, color: "#d4d4d8", lineHeight: 1.65, margin: 0 }}>
+              {result.prediction.prediction}
+            </p>
+            {result.prediction.divergence_warning && (
+              <p style={{ fontSize: 9, color: "#eab308", lineHeight: 1.5, margin: "6px 0 0 0" }}>
+                ⚠ {result.prediction.divergence_warning}
+              </p>
+            )}
+          </div>
+
+          {/* Follow-up input */}
+          <div style={{ display: "flex", gap: 7 }}>
+            <input
+              type="text"
+              value={followUp}
+              onChange={(e) => setFollowUp(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && followUp.trim()) { runForecast(followUp.trim()); setFollowUp(""); } }}
+              placeholder="Ask a follow-up prediction..."
+              className="nodrag"
+              style={{
+                flex: 1, background: `${accent}06`, border: `1px solid ${accent}20`,
+                borderRadius: 5, padding: "6px 9px", fontSize: 10, color: "#a1a1aa",
+                outline: "none", fontFamily: "inherit",
+              }}
+            />
+            <button
+              onClick={() => { if (followUp.trim()) { runForecast(followUp.trim()); setFollowUp(""); } }}
+              className="nodrag"
+              style={{
+                background: `${accent}18`, border: `1px solid ${accent}30`, borderRadius: 5,
+                padding: "6px 12px", fontSize: 11, color: accent, cursor: "pointer",
+                fontWeight: 700, flexShrink: 0,
+              }}
+            >→</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── AnimatedEdge ─────────────────────────────────────────────────────────────
 function AnimatedEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data }: EdgeProps & { data?: { active?: boolean; color?: string; dashed?: boolean } }) {
   const [edgePath] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
   const isActive = data?.active;
   const color = data?.color ?? "#3f3f46";
   const dashed = data?.dashed;
+  // If an explicit color is supplied, use a dimmed version of it for inactive state
+  const inactiveStroke = data?.color ? `${data.color}40` : "rgba(255,255,255,0.07)";
   return (
     <>
       <BaseEdge id={id} path={edgePath} style={{
-        stroke: isActive ? color : "rgba(255,255,255,0.07)",
+        stroke: isActive ? color : inactiveStroke,
         strokeWidth: isActive ? 2 : 1,
         strokeDasharray: dashed ? "5 4" : undefined,
         transition: "stroke 0.5s, stroke-width 0.4s",
@@ -677,6 +973,7 @@ const nodeTypes: NodeTypes = {
   source:      SourceNode      as unknown as NodeTypes[string],
   sourceGroup: SourceGroupNode as unknown as NodeTypes[string],
   synthesizer: SynthesizerNode as unknown as NodeTypes[string],
+  forecast:    ForecastNode    as unknown as NodeTypes[string],
 };
 
 const edgeTypes: EdgeTypes = {
@@ -688,10 +985,12 @@ const edgeTypes: EdgeTypes = {
 const AGENT_COLS    = [0, 260, 520, 780, 1040, 1300, 1560];
 const QUERY_X       = 715;   // center 360px node: 895 − 180
 const SYNTH_X       = 715;
+const FORECAST_X    = 685;   // center 420px forecast node: 895 − 210
 const ROW_AGENTS    = 180;
 const ROW_SOURCES   = 440;   // source group nodes (one compact box per agent)
 const ROW_SENSO     = 640;   // per-stream Senso fact-check boxes (one per agent)
 const ROW_SYNTH     = 1060;
+const ROW_FORECAST  = 1280;  // THE FUTURE node below THE TRUTH
 
 // ─── Build nodes ──────────────────────────────────────────────────────────────
 function buildNodes(
@@ -699,6 +998,8 @@ function buildNodes(
   query: string,
   status: JobStatus["status"],
   jobResults: AnalysisResults | null,
+  jobId: string,
+  backendUrl: string,
   posMap?: Map<string, { x: number; y: number }>,
 ): Node[] {
   const pos = (id: string, def: { x: number; y: number }) => posMap?.get(id) ?? def;
@@ -758,6 +1059,20 @@ function buildNodes(
     draggable: true,
   });
 
+  // THE FUTURE node
+  nodes.push({
+    id: "forecast",
+    type: "forecast",
+    position: pos("forecast", { x: FORECAST_X, y: ROW_FORECAST }),
+    data: {
+      jobId,
+      backendUrl,
+      query,
+      synthesizerComplete: agents.synthesizer.status === "complete",
+    },
+    draggable: true,
+  });
+
   return nodes;
 }
 
@@ -810,19 +1125,27 @@ function buildEdges(
     }),
   ];
 
-  // Senso → Synthesizer (all 7 streams)
+  // Senso → Synthesizer (all 7 streams — always flowing)
   for (const key of streamKeys) {
-    const sensoStatus = (agents[key] as AgentStatus & { senso_stream?: { status?: string } }).senso_stream?.status;
-    const sensoActive = (sensoStatus === "running" || sensoStatus === "complete") && synthActive;
     edges.push({
       id: `senso_${key}-synth`,
       source: `senso_${key}`,
       target: "synthesizer",
       type: "animated",
-      data: { active: sensoActive, color: ACCENT[key] },
-      markerEnd: { type: MarkerType.ArrowClosed, color: sensoActive ? ACCENT[key] : "rgba(255,255,255,0.1)", width: 8, height: 8 },
+      data: { active: true, color: ACCENT[key] },
+      markerEnd: { type: MarkerType.ArrowClosed, color: ACCENT[key], width: 8, height: 8 },
     });
   }
+
+  // Synthesizer → THE FUTURE (always flowing)
+  edges.push({
+    id: "synth-forecast",
+    source: "synthesizer",
+    target: "forecast",
+    type: "animated",
+    data: { active: true, color: ACCENT.forecast },
+    markerEnd: { type: MarkerType.ArrowClosed, color: ACCENT.forecast, width: 10, height: 10 },
+  });
 
   return edges;
 }
@@ -833,20 +1156,22 @@ interface Props {
   status: JobStatus["status"];
   query: string;
   results: JobStatus["results"];
+  jobId: string;
+  backendUrl: string;
 }
 
-export default function AgentFlowGraph({ agents, status, query, results }: Props) {
+export default function AgentFlowGraph({ agents, status, query, results, jobId, backendUrl }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState(
-    buildNodes(agents, query, status, results ?? null)
+    buildNodes(agents, query, status, results ?? null, jobId, backendUrl)
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState(buildEdges(agents, results ?? null));
 
   useEffect(() => {
     setNodes((prev) => {
       const posMap = new Map(prev.map((n) => [n.id, n.position]));
-      return buildNodes(agents, query, status, results ?? null, posMap);
+      return buildNodes(agents, query, status, results ?? null, jobId, backendUrl, posMap);
     });
-  }, [agents, query, status, results, setNodes]);
+  }, [agents, query, status, results, jobId, backendUrl, setNodes]);
 
   useEffect(() => {
     setEdges(buildEdges(agents, results ?? null));

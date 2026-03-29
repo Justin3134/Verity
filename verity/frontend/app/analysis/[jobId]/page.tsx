@@ -397,7 +397,7 @@ export default function AnalysisPage() {
             {activePanel === "graph" ? (
               <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                 <div style={{ flex: "3 1 0", minHeight: 200, position: "relative" }}>
-                  <AgentFlowGraph agents={job.agents} status={job.status} query={job.query} results={job.results} />
+                  <AgentFlowGraph agents={job.agents} status={job.status} query={job.query} results={job.results} jobId={jobId} backendUrl={BACKEND} />
                 </div>
               </div>
             ) : activePanel === "debates" ? (

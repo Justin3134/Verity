@@ -1,6 +1,6 @@
 """
-Agent 5 — Conflict Synthesizer
-Runs after all four intelligence agents complete.
+THE TRUTH — Final Synthesis Engine
+Runs after all intelligence streams complete.
 Takes all streams and produces the final VERITY assessment:
 VERIFIED / CONTESTED / UNVERIFIED / HIDDEN / PROPAGANDA
 """
@@ -78,7 +78,7 @@ async def run_conflict_synthesizer(
         job_status.setdefault("senso_log", []).append(msg)
 
     # Final Senso queries for synthesis
-    log_senso("Conflict Synthesizer: final cross-reference against Senso historical patterns...")
+    log_senso("THE TRUTH: final cross-reference against Senso historical patterns...")
     agent["action"] = "Querying Senso for cross-validation patterns..."
 
     senso_final = await _run_senso(["search", f"propaganda detection coordinated narrative {query}"])
@@ -211,7 +211,7 @@ async def run_conflict_synthesizer(
     agent["action"] = "Running final VERIFIED/CONTESTED/HIDDEN/PROPAGANDA classification..."
     log_senso("Synthesizer: classifying all claims as VERIFIED/CONTESTED/UNVERIFIED/HIDDEN/PROPAGANDA...")
 
-    system = """You are VERITY's Conflict Synthesizer — the final intelligence assessment engine.
+    system = """You are VERITY's THE TRUTH — the final intelligence assessment engine.
 Your job: cross-reference ALL four intelligence streams and produce a definitive, sourced verdict.
 
 Classification rules:

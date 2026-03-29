@@ -209,8 +209,8 @@ def create_job(job_id: str, query: str) -> dict:
                 "senso_stream": None,
             },
             "synthesizer": {
-                "name": "Conflict Synthesizer",
-                "description": "Cross-references all 5 streams for final verdict",
+                "name": "THE TRUTH",
+                "description": "Cross-references all 7 streams for the final verdict",
                 "status": "waiting",
                 "action": "Waiting for all intelligence streams...",
                 "result": None,
@@ -307,6 +307,27 @@ async def get_status(job_id: str):
 async def get_recent():
     """Returns recent analyses for the landing page."""
     return {"recent": await db_get_recent(8)}
+
+
+class ForecastRequest(BaseModel):
+    job_id: str
+    sub_query: str
+
+
+@app.post("/forecast")
+async def forecast(request: ForecastRequest):
+    """THE FUTURE — predictive engine comparing Senso historical patterns vs. live Tavily signals."""
+    from agents.forecast_agent import run_forecast
+
+    executive_summary = ""
+    original_query = request.sub_query
+    if request.job_id in jobs:
+        job = jobs[request.job_id]
+        original_query = job.get("query", request.sub_query)
+        if job.get("results"):
+            executive_summary = job["results"].get("executive_summary", "")
+
+    return await run_forecast(request.sub_query, original_query, executive_summary)
 
 
 class ChatRequest(BaseModel):
