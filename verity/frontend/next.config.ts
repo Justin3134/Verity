@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  /** Pin workspace root so a parent-directory lockfile does not confuse Turbopack */
+  turbopack: {
+    root: path.resolve(process.cwd()),
+  },
   async rewrites() {
     return [
       {

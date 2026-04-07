@@ -10,9 +10,8 @@ import json
 import os
 import sys
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
-import asyncpg
 from dotenv import load_dotenv
 
 # Load .env from the verity root
@@ -29,8 +28,8 @@ from agents.flow import run_analysis_flow
 
 app = FastAPI(title="VERITY Intelligence API", version="1.0.0")
 
-# Database pool — None when DATABASE_URL is not set (falls back to in-memory)
-db_pool: asyncpg.Pool | None = None
+# Database pool — None when DATABASE_URL is not set or asyncpg unavailable (in-memory fallback)
+db_pool: Any = None
 
 
 @app.on_event("startup")
@@ -61,6 +60,14 @@ async def init_db() -> None:
     global db_pool
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
+        return
+    try:
+        import asyncpg
+    except ImportError:
+        print(
+            "[DB] DATABASE_URL is set but asyncpg is not installed; running without persistence.",
+            file=sys.stderr,
+        )
         return
     try:
         db_pool = await asyncpg.create_pool(database_url, min_size=1, max_size=5)
