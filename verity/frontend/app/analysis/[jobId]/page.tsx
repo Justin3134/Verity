@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import ResultsPanel from "@/components/ResultsPanel";
 import ChatPanel from "@/components/ChatPanel";
 import RailVizButton from "@/components/RailVizButton";
+import { getPublicBackendBase } from "@/lib/publicBackendBase";
 import AgentDebates from "@/components/AgentDebates";
 
 // React Flow must be client-only
@@ -185,7 +186,7 @@ export default function AnalysisPage() {
   const [activePanel, setActivePanel] = useState<ActivePanel>("graph");
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
+  const BACKEND = getPublicBackendBase();
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -202,7 +203,11 @@ export default function AnalysisPage() {
       setJob(data);
       if (data.status === "complete" || data.status === "error") {
         if (pollRef.current) clearInterval(pollRef.current);
-        if (data.status === "complete") setActivePanel("debates");
+        if (data.status === "complete") {
+          // If agents detail is missing (DB-loaded job), go straight to results
+          const hasAgentData = Object.keys(data.agents ?? {}).length > 0;
+          setActivePanel(hasAgentData ? "debates" : "results");
+        }
       }
     } catch (err: unknown) {
       if (pollRef.current) clearInterval(pollRef.current);
