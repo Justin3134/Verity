@@ -206,9 +206,10 @@ function QueryNode({ data }: { data: { query: string; status: string } }) {
 }
 
 // ─── AgentNode ────────────────────────────────────────────────────────────────
-function AgentNode({ data }: { data: { agent: AgentStatus; agentKey: string; streamAccent: string } }) {
+function AgentNode({ data }: { data: { agent: AgentStatus | undefined; agentKey: string; streamAccent: string } }) {
   const { agent, agentKey, streamAccent } = data;
   const accent = streamAccent ?? ACCENT.breaking_news;
+  if (!agent) return null;
   const s = STATUS_CFG[agent.status] ?? STATUS_CFG.idle;
   const meta = AGENT_META[agentKey] ?? { icon: "●", subtitle: "", itemLabel: "Items", description: "" };
   const facts = agent.status === "complete" ? getFactsForAgent(agent, agentKey as AgentKey, 4, 115) : [];
@@ -420,9 +421,10 @@ function SourceGroupNode({ data }: {
 }
 
 // ─── SynthesizerNode ──────────────────────────────────────────────────────────
-function SynthesizerNode({ data }: { data: { agent: AgentStatus; jobResults: AnalysisResults | null } }) {
+function SynthesizerNode({ data }: { data: { agent: AgentStatus | undefined; jobResults: AnalysisResults | null } }) {
   const { agent, jobResults } = data;
   const accent = ACCENT.synthesizer;
+  if (!agent) return null;
   const s = STATUS_CFG[agent.status] ?? STATUS_CFG.idle;
   const isRunning  = agent.status === "running";
   const isComplete = agent.status === "complete";

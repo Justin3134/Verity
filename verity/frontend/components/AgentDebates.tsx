@@ -761,14 +761,17 @@ export default function AgentDebates({ agents, results, status }: Props) {
   const activeMeta = STREAMS.find((s) => s.key === activeStream)!;
 
   const renderAgentContent = () => {
+    const placeholder = (label: string) => (
+      <div style={{ padding: 24, color: "#484f58", fontSize: 12 }}>{label} — waiting for data…</div>
+    );
     switch (activeStream) {
-      case "breaking_news":    return <BreakingNewsView agent={agents.breaking_news} accent={activeMeta.accent} />;
-      case "historical":       return <HistoricalView agent={agents.historical as AgentStatus} accent={activeMeta.accent} />;
-      case "official_docs":    return <OfficialDocsView agent={agents.official_docs as AgentStatus} accent={activeMeta.accent} />;
-      case "visual_intel":     return <VisualIntelView agent={agents.visual_intel as AgentStatus} accent={activeMeta.accent} />;
-      case "financial_market": return <FinancialMarketsView agent={agents.financial_market as AgentStatus} accent={activeMeta.accent} />;
-      case "social_pulse":     return <SocialPulseView agent={agents.social_pulse as AgentStatus} accent={activeMeta.accent} />;
-      case "legal":            return <LegalView agent={agents.legal as AgentStatus} accent={activeMeta.accent} />;
+      case "breaking_news":    return agents.breaking_news    ? <BreakingNewsView agent={agents.breaking_news} accent={activeMeta.accent} />                            : placeholder("Breaking News");
+      case "historical":       return agents.historical       ? <HistoricalView agent={agents.historical as AgentStatus} accent={activeMeta.accent} />                  : placeholder("Historical Intel");
+      case "official_docs":    return agents.official_docs    ? <OfficialDocsView agent={agents.official_docs as AgentStatus} accent={activeMeta.accent} />             : placeholder("Official Docs");
+      case "visual_intel":     return agents.visual_intel     ? <VisualIntelView agent={agents.visual_intel as AgentStatus} accent={activeMeta.accent} />               : placeholder("Visual Intel");
+      case "financial_market": return agents.financial_market ? <FinancialMarketsView agent={agents.financial_market as AgentStatus} accent={activeMeta.accent} />      : placeholder("Financial Markets");
+      case "social_pulse":     return agents.social_pulse     ? <SocialPulseView agent={agents.social_pulse as AgentStatus} accent={activeMeta.accent} />               : placeholder("Social Pulse");
+      case "legal":            return agents.legal            ? <LegalView agent={agents.legal as AgentStatus} accent={activeMeta.accent} />                            : placeholder("Legal");
     }
   };
 
