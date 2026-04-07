@@ -2,14 +2,15 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { getPublicBackendBase } from "@/lib/publicBackendBase";
 
 const EXAMPLE_QUERIES = [
-  "Trump Iran policy — 2018 vs 2025",
   "Ukraine Russia war frontline update",
-  "Gaza ceasefire negotiations",
   "Taiwan China military tensions",
-  "Trump NATO Article 5 2025",
-  "Biden Afghanistan withdrawal",
+  "Trump tariffs impact on Taiwan semiconductors",
+  "Iran nuclear program vs 2018 JCPOA",
+  "China military buildup South China Sea 2026",
+  "Russia energy exports post-sanctions",
 ];
 
 export default function HomePage() {
@@ -33,8 +34,7 @@ export default function HomePage() {
       const formData = new FormData();
       formData.append("query", q);
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
-      const res = await fetch(`${backendUrl}/analyze`, {
+      const res = await fetch(`${getPublicBackendBase()}/analyze`, {
         method: "POST",
         body: formData,
       });
