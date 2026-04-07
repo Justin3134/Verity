@@ -121,7 +121,8 @@ function extractAgentSources(agents: JobStatus["agents"]): AgentSourceItem[] {
   };
 
   for (const key of streamKeys) {
-    const agent = agents[key] as unknown as Record<string, unknown>;
+    const agent = agents[key] as unknown as Record<string, unknown> | undefined;
+    if (!agent) continue;
     const field = fieldMap[key];
     add(key, (agent[field] as { title?: string; url?: string }[]) ?? []);
   }
@@ -1020,7 +1021,7 @@ function buildNodes(
       id: `senso_${key}`,
       type: "senso",
       position: pos(`senso_${key}`, { x: AGENT_COLS[i] + 10, y: ROW_SENSO }),
-      data: { senso: (agents[key] as AgentStatus & { senso_stream?: Record<string, unknown> }).senso_stream ?? null, accent: ACCENT[key] },
+      data: { senso: (agents[key] as AgentStatus & { senso_stream?: Record<string, unknown> } | undefined)?.senso_stream ?? null, accent: ACCENT[key] },
       draggable: true,
     })),
   ];
@@ -1068,7 +1069,7 @@ function buildNodes(
       jobId,
       backendUrl,
       query,
-      synthesizerComplete: agents.synthesizer.status === "complete",
+      synthesizerComplete: agents.synthesizer?.status === "complete",
     },
     draggable: true,
   });
@@ -1082,7 +1083,7 @@ function buildEdges(
   jobResults: AnalysisResults | null,
 ): Edge[] {
   const streamKeys = ["breaking_news", "historical", "official_docs", "visual_intel", "financial_market", "social_pulse", "legal"] as const;
-  const synthActive = agents.synthesizer.status === "running" || agents.synthesizer.status === "complete";
+  const synthActive = agents.synthesizer?.status === "running" || agents.synthesizer?.status === "complete";
 
   const isActive = (key: string) => {
     const a = agents[key as keyof typeof agents];
