@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import ResultsPanel from "@/components/ResultsPanel";
 import ChatPanel from "@/components/ChatPanel";
-import RailVizButton from "@/components/RailVizButton";
 import { getPublicBackendBase } from "@/lib/publicBackendBase";
 import AgentDebates from "@/components/AgentDebates";
 
@@ -320,7 +319,6 @@ export default function AnalysisPage() {
           <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>
             {completeCount}/{Object.keys(job.agents).length} agents
           </span>
-          <RailVizButton />
           <StatusPill status={job.status} />
         </div>
       </header>
